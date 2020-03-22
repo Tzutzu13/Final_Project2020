@@ -121,4 +121,3 @@ for i in range(10):
     plt.subplot(2, 10, i+1)
     plt.imshow(pred[i, ..., 0], cmap='gray')  
 plt.show()
-print('yona')
