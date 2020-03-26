@@ -26,20 +26,17 @@ import pandas as pd
 from keras.preprocessing.image import ImageDataGenerator
 np.random.seed(10)
 import tensorflow as tf
-
 tf.random.set_seed(7)
 
-
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
-
-x = x_train[0:500] #x,y needs same shape
-y = y_train[0:500]
+x = x_train[0:10000] #x,y needs same shape
+y = y_train[0:10000]
 
 x = x.reshape((x.shape[0], -1))
 x = np.divide(x, 255.)
 x_test = np.divide(x_test, 255.)
 x_test = x_test.reshape((x_test.shape[0], -1))
-
+x_test = x_test[0:500]
 n_clusters = 10
 x.shape
 
@@ -48,38 +45,54 @@ X_train = x.reshape(-1,28,28,1)
 
 result_x = np.array(X_train)
 result_y = y
-x_train2 = np.array(result_x, copy=True) 
-y_train2 = np.array(result_y, copy=True) 
+# x_train2 = np.array(result_x, copy=True) 
+# y_train2 = np.array(result_y, copy=True) .
 
-# datagen = ImageDataGenerator(rotation_range=10)
-# # compute quantities required for featurewise normalization
-# # (std, mean, and principal components if ZCA whitening is applied)
+datagen = ImageDataGenerator(rotation_range=10)
+datagen.fit(result_x)
+(x_aug ,y_aug)= datagen.flow(result_x, y, batch_size=500, shuffle=False, seed = 1).next()
 
+datagen = ImageDataGenerator(rotation_range=-10)
+datagen.fit(result_x)
+(x_aug1 ,y_aug1)= datagen.flow(result_x, y, batch_size=500, shuffle=False, seed = 1).next()
+
+datagen = ImageDataGenerator(zca_whitening=True)
+datagen.fit(result_x)
+(x_aug2 ,y_aug2)= datagen.flow(result_x, y, batch_size=500, shuffle=False, seed = 1).next()
+
+    
+datagen = ImageDataGenerator(width_shift_range=0.05)
+datagen.fit(result_x)
+(x_aug3 ,y_aug3)= datagen.flow(result_x, y, batch_size=500, shuffle=False, seed = 1).next()
+
+datagen = ImageDataGenerator(height_shift_range=0.05)
+datagen.fit(result_x)
+(x_aug4 ,y_aug4)= datagen.flow(result_x, y, batch_size=500, shuffle=False, seed = 1).next()
+
+datagen = ImageDataGenerator(featurewise_center = True)
+datagen.fit(result_x)
+(x_aug5 ,y_aug5)= datagen.flow(result_x, y, batch_size=500, shuffle=False, seed = 1).next()
+
+datagen = ImageDataGenerator(samplewise_center = True)
+datagen.fit(result_x)
+(x_aug6 ,y_aug6)= datagen.flow(result_x, y, batch_size=500, shuffle=False, seed = 1).next()
+
+# datagen = ImageDataGenerator(featurewise_std_normalization = True)
 # datagen.fit(result_x)
-# np.random.seed(10)
-# for x_batch, y_batch in datagen.flow(x_train2,y_train2,batch_size = 200):
+# (x_aug7 ,y_aug7)= datagen.flow(result_x, y, batch_size=500, shuffle=False, seed = 1).next()
 
-# # for x_batch, y_batch in datagen.flow(x_train2,y_train2,batch_size=500):
-#     x_train2 = np.concatenate((x_train2, x_batch))
-#     y_train2 = np.concatenate((y_train2, y_batch))
-#     break
-
-result_x = x_train2
-result_y = y_train2        
-
-# result_x  = np.concatenate((result_x, x_train2), axis=0)
-# result_y  = np.concatenate((result_y, y_train2), axis=0)
-
-# datagen = ImageDataGenerator(width_shift_range=0.2, height_shift_range=0.2)
+# datagen = ImageDataGenerator(samplewise_std_normalization = True)
 # datagen.fit(result_x)
+# (x_aug7 ,y_aug7)= datagen.flow(result_x, y, batch_size=500, shuffle=False, seed = 1).next()
 
-# for x_batch, y_batch in datagen.flow(x_train2,y_train2,batch_size=32):
-#     x_train2 = np.concatenate((x_train2, x_batch))
-#     y_train2 = np.concatenate((y_train2, y_batch))
-#     if x_train2.shape[0]>=1000:
-#         break
-# result_x  = np.concatenate((result_x, x_train2), axis=0)
-# result_y  = np.concatenate((result_y, y_train2), axis=0)
+# samplewise_std_normalization
+
+np.random.seed(10)
+# sum(sum(sum(result_x==X_train)))
+# result_x  = np.concatenate((result_x,x_aug,x_aug1,x_aug3, x_aug4,x_aug5,x_aug6), axis=0)
+# result_y  = np.concatenate((result_y,y_aug,y_aug1,y_aug3, y_aug4,y_aug5,y_aug6), axis=0)
+# result_x  = np.concatenate((result_x,x_aug7), axis=0)
+# result_y  = np.concatenate((result_y,y_aug7), axis=0)
 
 x = result_x
 x = x.reshape((x.shape[0], -1))
@@ -88,7 +101,6 @@ y = result_y
 dims = [x.shape[-1], 500, 500, 2000, 10]
 init = VarianceScaling(scale=1. / 3., mode='fan_in',distribution='uniform',seed=10)
 pretrain_optimizer = SGD(lr=1, momentum=0.9)
-# batch_size = 256
 
 def autoencoder(dims, act='relu', init=keras.initializers.glorot_uniform(seed=10)):
 # def autoencoder(dims, act='relu', init='glorot_uniform'):
@@ -124,12 +136,13 @@ def autoencoder(dims, act='relu', init=keras.initializers.glorot_uniform(seed=10
     return Model(inputs=input_img, outputs=decoded, name='AE'), Model(inputs=input_img, outputs=encoded, name='encoder')
 autoencoder, encoder = autoencoder(dims, init=init)
 autoencoder.compile(optimizer=pretrain_optimizer, loss='mse')
-# autoencoder.fit(x, x, batch_size=batch_size, epochs=300) #, callbacks=cb)
+
 autoencoder_train = autoencoder.fit(x, x,
                 epochs=50,
                 # batch_size=128,
                 # shuffle=True,
-                validation_data=(x_test, x_test))
+                validation_split = 0.2)
+                # validation_data=(x_test, x_test))
 epochs=50
 loss = autoencoder_train.history['loss']
 val_loss = autoencoder_train.history['val_loss']
@@ -154,8 +167,8 @@ for k in range(10):
     t = y_pred == k #clustering
     c = [i for i, b in enumerate(t) if b] #counting 
     u = max(np.bincount(y[c]))
-    print('cont=',np.bincount(y[c]))
-    print('y=',y[c])
+    # print('cont=',np.bincount(y[c]))
+    # print('y=',y[c])
     correct += u
 
     # n = 20  # how many digits we will display
@@ -167,15 +180,15 @@ for k in range(10):
     #     plt.gray()
     #     ax.get_xaxis().set_visible(False)
     #     ax.get_yaxis().set_visible(False)
-    #     print(k)
     
-        # display reconstruction
-        # ax = plt.subplot(2, n, i + 1 + n)
-        # plt.imshow(decoded_imgs[i].reshape(28, 28))
-        # plt.gray()
-        # ax.get_xaxis().set_visible(False)
-        # ax.get_yaxis().set_visible(False)
-    plt.show()
+    #     # display reconstruction
+    #     # ax = plt.subplot(2, n, i + 1 + n)
+    #     # plt.imshow(decoded_imgs[i].reshape(28, 28))
+    #     # plt.gray()
+    #     # ax.get_xaxis().set_visible(False)
+    #     # ax.get_yaxis().set_visible(False)
+    # plt.show()
     # pairs = np.array([[9,0],[8,1],[7,3],[6,4],[5,2],[4,0],[3,6],[2,9],[1,5],[0,8]])
 
 acc = correct/len(y)
+print('accuracy=' , acc)
