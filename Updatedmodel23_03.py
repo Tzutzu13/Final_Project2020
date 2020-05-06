@@ -2,11 +2,12 @@
 """
 Created on Mon Mar 23 02:37:44 2020
 
-@author: yaniv
+@author: yanivvv
 """
 import timeit
 start = timeit.default_timer()
 from keras.datasets import mnist
+# 
 import numpy as np
 from time import time
 import keras
@@ -39,7 +40,7 @@ x_test = x_test.reshape((x_test.shape[0], -1))
 x_test = x_test[0:500]
 n_clusters = 10
 x.shape
-
+# 
 X_train = x.reshape(-1,28,28,1)
 # x_test = x_test.reshape(-1,28,28,1)
 
